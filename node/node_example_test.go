@@ -34,6 +34,8 @@ type SampleLifecycle struct{}
 func (s *SampleLifecycle) Start() error { fmt.Println("Service starting..."); return nil }
 func (s *SampleLifecycle) Stop() error  { fmt.Println("Service stopping..."); return nil }
 
+// test function without Test prefix, but with Example prefix
+// https://blog.golang.org/examples#TOC_2.
 func ExampleLifecycle() {
 	// Create a network node to run protocols with the default values.
 	stack, err := node.New(&node.Config{})

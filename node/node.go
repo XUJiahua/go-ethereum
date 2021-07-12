@@ -42,7 +42,8 @@ type Node struct {
 	config        *Config
 	accman        *accounts.Manager
 	log           log.Logger
-	ephemKeystore string            // if non-empty, the key directory that will be removed by Stop
+	ephemKeystore string // if non-empty, the key directory that will be removed by Stop
+	// codereview: process lock the data dir, lock will be released when process exit closeDataDir
 	dirLock       fileutil.Releaser // prevents concurrent use of instance directory
 	stop          chan struct{}     // Channel to wait for termination notifications
 	server        *p2p.Server       // Currently running P2P networking layer
@@ -105,6 +106,7 @@ func New(conf *Config) (*Node, error) {
 		databases:     make(map[*closeTrackingDB]struct{}),
 	}
 
+	// codereview: 4 built-in APIs
 	// Register built-in APIs.
 	node.rpcAPIs = append(node.rpcAPIs, node.apis()...)
 
@@ -181,6 +183,7 @@ func (n *Node) Start() error {
 	// Start all registered lifecycles.
 	var started []Lifecycle
 	for _, lifecycle := range lifecycles {
+		// codereview: any lifecycle start failure result in all lifecycle stop
 		if err = lifecycle.Start(); err != nil {
 			break
 		}
@@ -315,6 +318,7 @@ func (n *Node) openDataDir() error {
 	}
 	// Lock the instance directory to prevent concurrent use by another instance as well as
 	// accidental use of the instance directory as a database.
+	// codereview: flock is a system call
 	release, _, err := fileutil.Flock(filepath.Join(instdir, "LOCK"))
 	if err != nil {
 		return convertFileLockError(err)
@@ -456,6 +460,8 @@ func (n *Node) RegisterAPIs(apis []rpc.API) {
 	n.rpcAPIs = append(n.rpcAPIs, apis...)
 }
 
+// codereview: only used for graphql
+
 // RegisterHandler mounts a handler on the given path on the canonical HTTP server.
 //
 // The name of the handler is shown in a log message when the HTTP server starts
@@ -497,6 +503,7 @@ func (n *Node) Config() *Config {
 // only to inspect fields of the currently running server. Callers should not
 // start or stop the returned server.
 func (n *Node) Server() *p2p.Server {
+	// TODO: lock here useful?
 	n.lock.Lock()
 	defer n.lock.Unlock()
 

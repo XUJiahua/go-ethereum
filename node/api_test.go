@@ -18,6 +18,7 @@ package node
 
 import (
 	"bytes"
+	"github.com/davecgh/go-spew/spew"
 	"io"
 	"net"
 	"net/http"
@@ -336,7 +337,8 @@ func checkRPC(url string) bool {
 	}
 	defer c.Close()
 
-	_, err = c.SupportedModules()
+	modules, err := c.SupportedModules()
+	spew.Dump(modules)
 	return err == nil
 }
 

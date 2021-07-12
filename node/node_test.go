@@ -19,6 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
 	"net"
@@ -50,106 +51,75 @@ func testNodeConfig() *Config {
 // Tests that an empty protocol stack can be closed more than once.
 func TestNodeCloseMultipleTimes(t *testing.T) {
 	stack, err := New(testNodeConfig())
-	if err != nil {
-		t.Fatalf("failed to create protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create protocol stack")
 	stack.Close()
 
 	// Ensure that a stopped node can be stopped again
 	for i := 0; i < 3; i++ {
-		if err := stack.Close(); err != ErrNodeStopped {
-			t.Fatalf("iter %d: stop failure mismatch: have %v, want %v", i, err, ErrNodeStopped)
-		}
+		require.Equal(t, stack.Close(), ErrNodeStopped, "iter %d: stop failure mismatch", i)
 	}
 }
 
 func TestNodeStartMultipleTimes(t *testing.T) {
 	stack, err := New(testNodeConfig())
-	if err != nil {
-		t.Fatalf("failed to create protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create protocol stack")
 
 	// Ensure that a node can be successfully started, but only once
-	if err := stack.Start(); err != nil {
-		t.Fatalf("failed to start node: %v", err)
-	}
-	if err := stack.Start(); err != ErrNodeRunning {
-		t.Fatalf("start failure mismatch: have %v, want %v ", err, ErrNodeRunning)
-	}
+	require.Nil(t, stack.Start(), "failed to start node")
+	require.Equal(t, stack.Start(), ErrNodeRunning, "start failure mismatch")
+
 	// Ensure that a node can be stopped, but only once
-	if err := stack.Close(); err != nil {
-		t.Fatalf("failed to stop node: %v", err)
-	}
-	if err := stack.Close(); err != ErrNodeStopped {
-		t.Fatalf("stop failure mismatch: have %v, want %v ", err, ErrNodeStopped)
-	}
+	require.Nil(t, stack.Close(), "failed to stop node")
+	require.Equal(t, stack.Close(), ErrNodeStopped, "stop failure mismatch")
 }
 
 // Tests that if the data dir is already in use, an appropriate error is returned.
 func TestNodeUsedDataDir(t *testing.T) {
 	// Create a temporary folder to use as the data directory
 	dir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("failed to create temporary data directory: %v", err)
-	}
+	require.Nil(t, err, "failed to create temporary data directory")
 	defer os.RemoveAll(dir)
 
 	// Create a new node based on the data directory
 	original, err := New(&Config{DataDir: dir})
-	if err != nil {
-		t.Fatalf("failed to create original protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create original protocol stack")
 	defer original.Close()
-	if err := original.Start(); err != nil {
-		t.Fatalf("failed to start original protocol stack: %v", err)
-	}
+	require.Nil(t, original.Start(), "failed to start original protocol stack")
 
 	// Create a second node based on the same data directory and ensure failure
 	_, err = New(&Config{DataDir: dir})
-	if err != ErrDatadirUsed {
-		t.Fatalf("duplicate datadir failure mismatch: have %v, want %v", err, ErrDatadirUsed)
-	}
+	require.Equal(t, err, ErrDatadirUsed, "duplicate datadir failure mismatch")
 }
 
 // Tests whether a Lifecycle can be registered.
 func TestLifecycleRegistry_Successful(t *testing.T) {
 	stack, err := New(testNodeConfig())
-	if err != nil {
-		t.Fatalf("failed to create protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create protocol stack")
 	defer stack.Close()
 
 	noop := NewNoop()
 	stack.RegisterLifecycle(noop)
 
-	if !containsLifecycle(stack.lifecycles, noop) {
-		t.Fatalf("lifecycle was not properly registered on the node, %v", err)
-	}
+	require.True(t, containsLifecycle(stack.lifecycles, noop), "lifecycle was not properly registered on the node")
 }
 
 // Tests whether a service's protocols can be registered properly on the node's p2p server.
 func TestRegisterProtocols(t *testing.T) {
 	stack, err := New(testNodeConfig())
-	if err != nil {
-		t.Fatalf("failed to create protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create protocol stack")
 	defer stack.Close()
 
 	fs, err := NewFullService(stack)
-	if err != nil {
-		t.Fatalf("could not create full service: %v", err)
-	}
+	require.Nil(t, err, "could not create full service")
 
+	// codereview: p2p protocol as plugin
 	for _, protocol := range fs.Protocols() {
-		if !containsProtocol(stack.server.Protocols, protocol) {
-			t.Fatalf("protocol %v was not successfully registered", protocol)
-		}
+		require.True(t, containsProtocol(stack.server.Protocols, protocol), "protocol %v was not successfully registered", protocol)
 	}
 
+	// codereview: rpc api as plugin
 	for _, api := range fs.APIs() {
-		if !containsAPI(stack.rpcAPIs, api) {
-			t.Fatalf("api %v was not successfully registered", api)
-		}
+		require.True(t, containsAPI(stack.rpcAPIs, api), "api %v was not successfully registered", api)
 	}
 }
 
@@ -159,17 +129,11 @@ func TestNodeCloseClosesDB(t *testing.T) {
 	defer stack.Close()
 
 	db, err := stack.OpenDatabase("mydb", 0, 0, "", false)
-	if err != nil {
-		t.Fatal("can't open DB:", err)
-	}
-	if err = db.Put([]byte{}, []byte{}); err != nil {
-		t.Fatal("can't Put on open DB:", err)
-	}
+	require.Nil(t, err, "can't open DB")
+	require.Nil(t, db.Put([]byte{}, []byte{}), "can't Put on open DB")
 
 	stack.Close()
-	if err = db.Put([]byte{}, []byte{}); err == nil {
-		t.Fatal("Put succeeded after node is closed")
-	}
+	require.NotNil(t, db.Put([]byte{}, []byte{}), "Put succeeded after node is closed")
 }
 
 // This test checks that OpenDatabase can be used from within a Lifecycle Start method.
@@ -191,6 +155,7 @@ func TestNodeOpenDatabaseFromLifecycleStart(t *testing.T) {
 		},
 	})
 
+	// codereview: node start, lifecycles start, node close, lifecycles stop
 	stack.Start()
 	stack.Close()
 }
@@ -242,25 +207,15 @@ func TestLifecycleLifeCycle(t *testing.T) {
 		stack.RegisterLifecycle(lifecycle)
 	}
 	// Start the node and check that all services are running
-	if err := stack.Start(); err != nil {
-		t.Fatalf("failed to start protocol stack: %v", err)
-	}
+	require.Nil(t, stack.Start(), "failed to start protocol stack")
 	for id := range lifecycles {
-		if !started[id] {
-			t.Fatalf("service %s: freshly started service not running", id)
-		}
-		if stopped[id] {
-			t.Fatalf("service %s: freshly started service already stopped", id)
-		}
+		require.True(t, started[id], "service %s: freshly started service not running", id)
+		require.False(t, stopped[id], "service %s: freshly started service already stopped", id)
 	}
 	// Stop the node and check that all services have been stopped
-	if err := stack.Close(); err != nil {
-		t.Fatalf("failed to stop protocol stack: %v", err)
-	}
+	require.Nil(t, stack.Close(), "failed to stop protocol stack")
 	for id := range lifecycles {
-		if !stopped[id] {
-			t.Fatalf("service %s: freshly terminated service still running", id)
-		}
+		require.True(t, stopped[id], "service %s: freshly terminated service still running", id)
 	}
 }
 
@@ -318,9 +273,7 @@ func TestLifecycleStartupError(t *testing.T) {
 // not influence the rest of the shutdown invocations.
 func TestLifecycleTerminationGuarantee(t *testing.T) {
 	stack, err := New(testNodeConfig())
-	if err != nil {
-		t.Fatalf("failed to create protocol stack: %v", err)
-	}
+	require.Nil(t, err, "failed to create protocol stack")
 	defer stack.Close()
 
 	started := make(map[string]bool)
@@ -385,6 +338,7 @@ func TestLifecycleTerminationGuarantee(t *testing.T) {
 		delete(stopped, id)
 	}
 
+	// TODO: for what?
 	stack.server = &p2p.Server{}
 	stack.server.PrivateKey = testNodeKey
 }
@@ -401,23 +355,17 @@ func TestRegisterHandler_Successful(t *testing.T) {
 	node.RegisterHandler("test", "/test", handler)
 
 	// start node
-	if err := node.Start(); err != nil {
-		t.Fatalf("could not start node: %v", err)
-	}
+	require.Nil(t, node.Start(), "could not start node")
 
 	// create HTTP request
 	httpReq, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:7878/test", nil)
-	if err != nil {
-		t.Error("could not issue new http request ", err)
-	}
+	require.Nil(t, err, "could not issue new http request")
 
 	// check response
 	resp := doHTTPRequest(t, httpReq)
 	buf := make([]byte, 7)
 	_, err = io.ReadFull(resp.Body, buf)
-	if err != nil {
-		t.Fatalf("could not read response: %v", err)
-	}
+	require.Nil(t, err, "could not read response")
 	assert.Equal(t, "success", string(buf))
 }
 
@@ -434,6 +382,7 @@ func TestRegisterHandler_Unsuccessful(t *testing.T) {
 		w.Write([]byte("success"))
 	})
 	node.RegisterHandler("test", "/test", handler)
+	// codereview: you do not know http port
 }
 
 // Tests whether websocket requests can be handled on the same port as a regular http server.
@@ -457,9 +406,7 @@ func TestWebsocketHTTPOnSamePort_WebsocketRequest(t *testing.T) {
 func TestWebsocketHTTPOnSeparatePort_WSRequest(t *testing.T) {
 	// try and get a free port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal("can't listen:", err)
-	}
+	require.Nil(t, err, "can't listen")
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
@@ -599,18 +546,13 @@ func createNode(t *testing.T, httpPort, wsPort int) *Node {
 		WSPort:   wsPort,
 	}
 	node, err := New(conf)
-	if err != nil {
-		t.Fatalf("could not create a new node: %v", err)
-	}
+	require.Nil(t, err, "could not create a new node")
 	return node
 }
 
 func startHTTP(t *testing.T, httpPort, wsPort int) *Node {
 	node := createNode(t, httpPort, wsPort)
-	err := node.Start()
-	if err != nil {
-		t.Fatalf("could not start http service on node: %v", err)
-	}
+	require.Nil(t, node.Start(), "could not start http service on node")
 
 	return node
 }
