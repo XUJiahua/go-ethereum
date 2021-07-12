@@ -38,8 +38,8 @@ import (
 type httpConfig struct {
 	Modules            []string
 	CorsAllowedOrigins []string
-	Vhosts             []string
-	prefix             string // path prefix on which to mount http handler
+	Vhosts             []string // TODO: what?
+	prefix             string   // path prefix on which to mount http handler
 }
 
 // wsConfig is the JSON-RPC/Websocket configuration

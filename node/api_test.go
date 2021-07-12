@@ -19,6 +19,7 @@ package node
 import (
 	"bytes"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net"
 	"net/http"
@@ -266,9 +267,7 @@ func TestStartRPC(t *testing.T) {
 				w.Write([]byte("OK"))
 			}))
 
-			if err := stack.Start(); err != nil {
-				t.Fatal("can't start node:", err)
-			}
+			require.Nil(t, stack.Start(), "can't start node")
 
 			// Run the API call hook.
 			if test.fn != nil {
@@ -277,9 +276,13 @@ func TestStartRPC(t *testing.T) {
 
 			// Check if the HTTP endpoints are available.
 			baseURL := stack.HTTPEndpoint()
+			// codereview: telnet ip:port
 			reachable := checkReachable(baseURL)
+			// http get test
 			handlersAvailable := checkBodyOK(baseURL + "/test")
+			// rpc test over http
 			rpcAvailable := checkRPC(baseURL)
+			// rpc test over ws
 			wsAvailable := checkRPC(strings.Replace(baseURL, "http://", "ws://", 1))
 			if reachable != test.wantReachable {
 				t.Errorf("HTTP server is %sreachable, want it %sreachable", not(reachable), not(test.wantReachable))

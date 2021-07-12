@@ -55,6 +55,8 @@ func (n *Node) apis() []rpc.API {
 	}
 }
 
+// TODO: when to use?
+
 // privateAdminAPI is the collection of administrative API methods exposed only
 // over a secure RPC channel.
 type privateAdminAPI struct {

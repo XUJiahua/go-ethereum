@@ -18,6 +18,7 @@ package node
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -39,29 +40,21 @@ func TestDatadirCreation(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	node, err := New(&Config{DataDir: dir})
-	if err != nil {
-		t.Fatalf("failed to create stack with existing datadir: %v", err)
-	}
-	if err := node.Close(); err != nil {
-		t.Fatalf("failed to close node: %v", err)
-	}
+	require.Nil(t, err, "failed to create stack with existing datadir")
+	require.Nil(t, node.Close(), "failed to close node")
+
+	// codereview: New() will make sure dir created
 	// Generate a long non-existing datadir path and check that it gets created by a node
 	dir = filepath.Join(dir, "a", "b", "c", "d", "e", "f")
 	node, err = New(&Config{DataDir: dir})
-	if err != nil {
-		t.Fatalf("failed to create stack with creatable datadir: %v", err)
-	}
-	if err := node.Close(); err != nil {
-		t.Fatalf("failed to close node: %v", err)
-	}
+	require.Nil(t, err, "failed to create stack with creatable datadir")
+	require.Nil(t, node.Close(), "failed to close node")
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("freshly created datadir not accessible: %v", err)
 	}
 	// Verify that an impossible datadir fails creation
 	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		t.Fatalf("failed to create temporary file: %v", err)
-	}
+	require.Nil(t, err, "failed to create temporary file")
 	defer os.Remove(file.Name())
 
 	dir = filepath.Join(file.Name(), "invalid/path")
@@ -110,18 +103,14 @@ func TestIPCPathResolution(t *testing.T) {
 func TestNodeKeyPersistency(t *testing.T) {
 	// Create a temporary folder and make sure no key is present
 	dir, err := ioutil.TempDir("", "node-test")
-	if err != nil {
-		t.Fatalf("failed to create temporary data directory: %v", err)
-	}
+	require.Nil(t, err, "failed to create temporary data directory")
 	defer os.RemoveAll(dir)
 
 	keyfile := filepath.Join(dir, "unit-test", datadirPrivateKey)
 
 	// Configure a node with a preset key and ensure it's not persisted
 	key, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf("failed to generate one-shot node key: %v", err)
-	}
+	require.Nil(t, err, "failed to generate one-shot node key")
 	config := &Config{Name: "unit-test", DataDir: dir, P2P: p2p.Config{PrivateKey: key}}
 	config.NodeKey()
 	if _, err := os.Stat(filepath.Join(keyfile)); err == nil {

@@ -110,6 +110,7 @@ func New(conf *Config) (*Node, error) {
 	// Register built-in APIs.
 	node.rpcAPIs = append(node.rpcAPIs, node.apis()...)
 
+	// codereview: get directory lock before Start()
 	// Acquire the instance directory lock.
 	if err := node.openDataDir(); err != nil {
 		return nil, err
