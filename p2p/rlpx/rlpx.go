@@ -153,6 +153,8 @@ func (c *Conn) Read() (code uint64, data []byte, wireSize int, err error) {
 		if actualSize > maxUint24 {
 			return code, nil, 0, errPlainMessageTooLarge
 		}
+		// codereview: c.snappyReadBuffer will reuse as long as actualSize not exceeds it's cap (underlying array size)
+		// benefits for less gc
 		c.snappyReadBuffer = growslice(c.snappyReadBuffer, actualSize)
 		data, err = snappy.Decode(c.snappyReadBuffer, data)
 	}
@@ -304,8 +306,10 @@ func (c *Conn) Handshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
 		h   handshakeState
 	)
 	if c.dialDest != nil {
+		// codereview: called on the dialing side of the connection
 		sec, err = h.runInitiator(c.conn, prv, c.dialDest)
 	} else {
+		// codereview: called on the listening side of the connection
 		sec, err = h.runRecipient(c.conn, prv)
 	}
 	if err != nil {

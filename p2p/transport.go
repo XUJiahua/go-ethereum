@@ -82,6 +82,7 @@ func (t *rlpxTransport) WriteMsg(msg Msg) error {
 	t.wmu.Lock()
 	defer t.wmu.Unlock()
 
+	// codereview: underlying storage keep, benifits for less gc
 	// Copy message data to write buffer.
 	t.wbuf.Reset()
 	if _, err := io.CopyN(&t.wbuf, msg.Payload, int64(msg.Size)); err != nil {

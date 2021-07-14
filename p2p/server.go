@@ -192,8 +192,8 @@ type Server struct {
 	peerOp                  chan peerOpFunc
 	peerOpDone              chan struct{}
 	delpeer                 chan peerDrop
-	checkpointPostHandshake chan *conn
-	checkpointAddPeer       chan *conn
+	checkpointPostHandshake chan *conn // codereview: after enc handshake
+	checkpointAddPeer       chan *conn // codereview: after proto handshake
 
 	// State of run loop and listenLoop.
 	inboundHistory expHeap
@@ -216,6 +216,8 @@ const (
 	trustedConn
 )
 
+// codereview: conn is also a transport
+
 // conn wraps a network connection with information gathered
 // during the two handshakes.
 type conn struct {
@@ -230,7 +232,9 @@ type conn struct {
 
 type transport interface {
 	// The two handshakes.
+	// codereview: handshake input our private key, output remote public key
 	doEncHandshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error)
+	// codereview: handshake input our proto, output remote proto
 	doProtoHandshake(our *protoHandshake) (*protoHandshake, error)
 	// The MsgReadWriter can only be used after the encryption
 	// handshake has completed. The code uses conn.id to track this
@@ -456,6 +460,7 @@ func (srv *Server) Start() (err error) {
 		return errors.New("Server.PrivateKey must be set to a non-nil key")
 	}
 	if srv.newTransport == nil {
+		// codereview: by default RLPX, also support customizing
 		srv.newTransport = newRLPX
 	}
 	if srv.listenFunc == nil {
@@ -463,7 +468,9 @@ func (srv *Server) Start() (err error) {
 	}
 	srv.quit = make(chan struct{})
 	srv.delpeer = make(chan peerDrop)
+	// codereview: after enc handshake
 	srv.checkpointPostHandshake = make(chan *conn)
+	// codereview: after protocol handshake
 	srv.checkpointAddPeer = make(chan *conn)
 	srv.addtrusted = make(chan *enode.Node)
 	srv.removetrusted = make(chan *enode.Node)
@@ -684,6 +691,7 @@ func (srv *Server) setupListening() error {
 // doPeerOp runs fn on the main loop.
 func (srv *Server) doPeerOp(fn peerOpFunc) {
 	select {
+	// codereview: delegate to other goroutine, and wait until peerOpDone signal arrive
 	case srv.peerOp <- fn:
 		<-srv.peerOpDone
 	case <-srv.quit:
@@ -835,6 +843,7 @@ func (srv *Server) listenLoop() {
 	if srv.MaxPendingPeers > 0 {
 		tokens = srv.MaxPendingPeers
 	}
+	// codereview: buffer with 50 slots
 	slots := make(chan struct{}, tokens)
 	for i := 0; i < tokens; i++ {
 		slots <- struct{}{}
@@ -921,8 +930,10 @@ func (srv *Server) checkInboundConn(remoteIP net.IP) error {
 func (srv *Server) SetupConn(fd net.Conn, flags connFlag, dialDest *enode.Node) error {
 	c := &conn{fd: fd, flags: flags, cont: make(chan error)}
 	if dialDest == nil {
+		// codereview: listening side of connection
 		c.transport = srv.newTransport(fd, nil)
 	} else {
+		// codereview: dialing side
 		c.transport = srv.newTransport(fd, dialDest.Pubkey())
 	}
 
@@ -942,6 +953,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 		return errServerStopped
 	}
 
+	// codereview: dialDest is for dialing side ???
 	// If dialing, figure out the remote public key.
 	var dialPubkey *ecdsa.PublicKey
 	if dialDest != nil {
@@ -962,6 +974,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	if dialDest != nil {
 		c.node = dialDest
 	} else {
+		// codereview: listening side of connection didn't know remote public key
 		c.node = nodeFromConn(remotePubkey, c.fd)
 	}
 	clog := srv.log.New("id", c.node.ID(), "addr", c.fd.RemoteAddr(), "conn", c.flags)
@@ -998,6 +1011,7 @@ func nodeFromConn(pubkey *ecdsa.PublicKey, conn net.Conn) *enode.Node {
 		ip = tcp.IP
 		port = tcp.Port
 	}
+	// codereview: node is represented by public key, ip, port, so we can also decode
 	return enode.NewV4(pubkey, ip, port, port)
 }
 
@@ -1005,10 +1019,12 @@ func nodeFromConn(pubkey *ecdsa.PublicKey, conn net.Conn) *enode.Node {
 // post-handshake checks for the stage (posthandshake, addpeer).
 func (srv *Server) checkpoint(c *conn, stage chan<- *conn) error {
 	select {
+	// codereview: send conn to run
 	case stage <- c:
 	case <-srv.quit:
 		return errServerStopped
 	}
+	// codereview: wait response from run
 	return <-c.cont
 }
 
@@ -1025,6 +1041,7 @@ func (srv *Server) launchPeer(c *conn) *Peer {
 
 // runPeer runs in its own goroutine for each peer.
 func (srv *Server) runPeer(p *Peer) {
+	// codereview: hook for testing
 	if srv.newPeerHook != nil {
 		srv.newPeerHook(p)
 	}

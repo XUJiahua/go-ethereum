@@ -18,6 +18,7 @@ package rlpx
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -48,4 +49,30 @@ func TestReadBufferReset(t *testing.T) {
 
 	assert.EqualError(t, err, "EOF")
 	assert.Nil(t, s6)
+}
+
+func Test_growslice(t *testing.T) {
+	actualSizeList := []int{10, 9, 8, 11}
+	var snappyReadBuffer []byte
+
+	printHelper(snappyReadBuffer)
+	for _, actualSize := range actualSizeList {
+		snappyReadBuffer = growslice(snappyReadBuffer, actualSize)
+		printHelper(snappyReadBuffer)
+	}
+
+	fmt.Println("-------------------------")
+
+	//snappyReadBuffer = []byte{}
+	//printHelper(snappyReadBuffer)
+	//for _, actualSize := range actualSizeList {
+	//	for i := 0; i < actualSize; i++ {
+	//		snappyReadBuffer = append(snappyReadBuffer, 0)
+	//	}
+	//	printHelper(snappyReadBuffer)
+	//}
+}
+
+func printHelper(s []byte) {
+	fmt.Printf("len: %d, cap: %d, %p\n", len(s), cap(s), s)
 }

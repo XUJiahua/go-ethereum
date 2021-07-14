@@ -20,6 +20,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"math/rand"
 	"net"
@@ -43,6 +45,7 @@ type testTransport struct {
 
 func newTestTransport(rpub *ecdsa.PublicKey, fd net.Conn, dialDest *ecdsa.PublicKey) transport {
 	wrapped := newRLPX(fd, dialDest).(*rlpxTransport)
+	// codereview: hardcode for rlpxTransport
 	wrapped.conn.InitWithSecrets(rlpx.Secrets{
 		AES:        make([]byte, 16),
 		MAC:        make([]byte, 16),
@@ -53,10 +56,12 @@ func newTestTransport(rpub *ecdsa.PublicKey, fd net.Conn, dialDest *ecdsa.Public
 }
 
 func (c *testTransport) doEncHandshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error) {
+	// return remote public key
 	return c.rpub, nil
 }
 
 func (c *testTransport) doProtoHandshake(our *protoHandshake) (*protoHandshake, error) {
+	// TODO: crypto.FromECDSAPub return 65 bytes
 	pubkey := crypto.FromECDSAPub(c.rpub)[1:]
 	return &protoHandshake{ID: pubkey, Name: "test"}, nil
 }
@@ -72,8 +77,9 @@ func startTestServer(t *testing.T, remoteKey *ecdsa.PublicKey, pf func(*Peer)) *
 		MaxPeers:    10,
 		ListenAddr:  "127.0.0.1:0",
 		NoDiscovery: true,
-		PrivateKey:  newkey(),
-		Logger:      testlog.Logger(t, log.LvlTrace),
+		// codereview: private key as peer identity
+		PrivateKey: newkey(),
+		Logger:     testlog.Logger(t, log.LvlTrace),
 	}
 	server := &Server{
 		Config:      config,
@@ -93,19 +99,16 @@ func TestServerListen(t *testing.T) {
 	connected := make(chan *Peer)
 	remid := &newkey().PublicKey
 	srv := startTestServer(t, remid, func(p *Peer) {
-		if p.ID() != enode.PubkeyToIDV4(remid) {
-			t.Error("peer func called with wrong node id")
-		}
+		assert.Equal(t, p.ID(), enode.PubkeyToIDV4(remid), "peer func called with wrong node id")
 		connected <- p
 	})
 	defer close(connected)
 	defer srv.Stop()
 
 	// dial the test server
+	// codereview: seems at the dialing side, we do not specify the public key of listening side
 	conn, err := net.DialTimeout("tcp", srv.ListenAddr, 5*time.Second)
-	if err != nil {
-		t.Fatalf("could not dial: %v", err)
-	}
+	require.Nil(t, err, "could not dial")
 	defer conn.Close()
 
 	select {
@@ -148,7 +151,9 @@ func TestServerDial(t *testing.T) {
 
 	// tell the server to connect
 	tcpAddr := listener.Addr().(*net.TCPAddr)
+	// codereview: node
 	node := enode.NewV4(remid, tcpAddr.IP, tcpAddr.Port, 0)
+	// codereview: add peer, let it dial
 	srv.AddPeer(node)
 
 	select {

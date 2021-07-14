@@ -123,5 +123,6 @@ func growslice(b []byte, wantLength int) []byte {
 	if cap(b) >= wantLength {
 		return b[:cap(b)]
 	}
+	// codereview: len = cap if 3rd argument not provided
 	return make([]byte, wantLength)
 }
