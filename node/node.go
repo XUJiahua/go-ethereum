@@ -48,7 +48,7 @@ type Node struct {
 	stop          chan struct{}     // Channel to wait for termination notifications
 	server        *p2p.Server       // Currently running P2P networking layer
 	startStopLock sync.Mutex        // Start/Stop are protected by an additional lock
-	state         int               // Tracks state of node lifecycle
+	state         State             // Tracks state of node lifecycle
 
 	lock          sync.Mutex
 	lifecycles    []Lifecycle // All registered backends, services, and auxiliary services that have a lifecycle
@@ -61,8 +61,10 @@ type Node struct {
 	databases map[*closeTrackingDB]struct{} // All open databases
 }
 
+type State int
+
 const (
-	initializingState = iota
+	initializingState State = iota
 	runningState
 	closedState
 )
