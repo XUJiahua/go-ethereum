@@ -71,6 +71,7 @@ var Defaults = Config{
 		DatasetsOnDisk:   2,
 		DatasetsLockMmap: false,
 	},
+	// codereview: networkId=1=main net
 	NetworkId:               1,
 	TxLookupLimit:           2350000,
 	LightPeers:              100,
@@ -124,6 +125,7 @@ type Config struct {
 	Genesis *core.Genesis `toml:",omitempty"`
 
 	// Protocol options
+	// codereview: create a private blockchain, use --networkid=1000 for example
 	NetworkId uint64 // Network ID to use for selecting peers to connect to
 	SyncMode  downloader.SyncMode
 
