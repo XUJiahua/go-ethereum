@@ -331,6 +331,7 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 	// Start up the node itself
 	utils.StartNode(ctx, stack)
 
+	// codereview: unlock accounts for later use? if UnlockedAccountFlag is specified
 	// Unlock any account specifically requested
 	unlockAccounts(ctx, stack)
 
@@ -348,6 +349,9 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 	go func() {
 		// Open any wallets already attached
 		for _, wallet := range stack.AccountManager().Wallets() {
+			// codereview: for keystoreWallet, always return nil, for externalWallet, always not support
+			// why empty passphrase? for these two case, passphrase is useless.
+			// Open meant to initialize access to a wallet instance, not Unlock!
 			if err := wallet.Open(""); err != nil {
 				log.Warn("Failed to open wallet", "url", wallet.URL(), "err", err)
 			}
@@ -441,7 +445,9 @@ func unlockAccounts(ctx *cli.Context, stack *node.Node) {
 	if !stack.Config().InsecureUnlockAllowed && stack.Config().ExtRPCEnabled() {
 		utils.Fatalf("Account unlock with HTTP access is forbidden!")
 	}
+	// TODO: what if only use ExternalBackend?
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	// codereview: read from file
 	passwords := utils.MakePasswordList(ctx)
 	for i, account := range unlocks {
 		unlockAccount(ks, account, i, passwords)
