@@ -145,3 +145,12 @@ geth-windows-amd64:
 	$(GORUN) build/ci.go xgo -- --go=$(GO) --targets=windows/amd64 -v ./cmd/geth
 	@echo "Windows amd64 cross compilation done:"
 	@ls -ld $(GOBIN)/geth-windows-* | grep amd64
+
+run:
+	#go run github.com/ethereum/go-ethereum/cmd/geth -h
+	#go run github.com/ethereum/go-ethereum/cmd/geth --networkid=1000
+	#go run github.com/ethereum/go-ethereum/cmd/geth account new --datadir /tmp/data
+	#go run github.com/ethereum/go-ethereum/cmd/geth --datadir /tmp/data --networkid=1000
+	#go run github.com/ethereum/go-ethereum/cmd/geth --datadir /tmp/data --networkid=1000 dumpgenesis
+	#go run github.com/ethereum/go-ethereum/cmd/geth --datadir /tmp/data --networkid=1000 attach
+	go run github.com/ethereum/go-ethereum/cmd/geth --datadir /tmp/data --networkid=1000 attach --exec "eth.blockNumber"
