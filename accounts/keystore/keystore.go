@@ -146,6 +146,8 @@ func (ks *KeyStore) refreshWallets() {
 		events  []accounts.WalletEvent
 	)
 
+	// codereview: accounts from cache is in order, refresh ks.wallets
+	// TODO: algorithm?
 	for _, account := range accs {
 		// Drop wallets while they were in front of the next account
 		for len(ks.wallets) > 0 && ks.wallets[0].URL().Cmp(account.URL) < 0 {

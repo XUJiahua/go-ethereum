@@ -40,6 +40,7 @@ const (
 )
 
 type Key struct {
+	// TODO use random Id as Address is not unique?
 	Id uuid.UUID // Version 4 "random" for unique id not derived from key data
 	// to simplify lookups we also store the address
 	Address common.Address
@@ -183,6 +184,7 @@ func storeNewKey(ks keyStore, rand io.Reader, auth string) (*Key, accounts.Accou
 		URL:     accounts.URL{Scheme: KeyStoreScheme, Path: ks.JoinPath(keyFileName(key.Address))},
 	}
 	if err := ks.StoreKey(a.URL.Path, key, auth); err != nil {
+		// TODO: why zero in memory??? security?
 		zeroKey(key.PrivateKey)
 		return nil, a, err
 	}

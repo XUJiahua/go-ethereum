@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core"
 )
 
+// codereview: clef signer service
 type ExternalBackend struct {
 	signers []accounts.Wallet
 }

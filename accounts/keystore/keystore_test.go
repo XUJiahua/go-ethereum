@@ -17,6 +17,8 @@
 package keystore
 
 import (
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -41,9 +43,7 @@ func TestKeyStore(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	a, err := ks.NewAccount("foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	if !strings.HasPrefix(a.URL.Path, dir) {
 		t.Errorf("account file %s doesn't have dir prefix", a.URL)
 	}
@@ -77,15 +77,11 @@ func TestSign(t *testing.T) {
 
 	pass := "" // not used but required by API
 	a1, err := ks.NewAccount(pass)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := ks.Unlock(a1, ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ks.SignHash(accounts.Account{Address: a1.Address}, testSigData); err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+	require.Nil(t, ks.Unlock(a1, ""))
+	sign, err := ks.SignHash(accounts.Account{Address: a1.Address}, testSigData)
+	require.Nil(t, err)
+	spew.Dump(sign)
 }
 
 func TestSignWithPassphrase(t *testing.T) {
@@ -94,18 +90,14 @@ func TestSignWithPassphrase(t *testing.T) {
 
 	pass := "passwd"
 	acc, err := ks.NewAccount(pass)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	if _, unlocked := ks.unlocked[acc.Address]; unlocked {
 		t.Fatal("expected account to be locked")
 	}
 
 	_, err = ks.SignHashWithPassphrase(acc, pass, testSigData)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	if _, unlocked := ks.unlocked[acc.Address]; unlocked {
 		t.Fatal("expected account to be locked")
@@ -122,9 +114,7 @@ func TestTimedUnlock(t *testing.T) {
 
 	pass := "foo"
 	a1, err := ks.NewAccount(pass)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	// Signing without passphrase fails because account is locked
 	_, err = ks.SignHash(accounts.Account{Address: a1.Address}, testSigData)
@@ -463,9 +453,7 @@ func checkEvents(t *testing.T, want []walletEvent, have []walletEvent) {
 
 func tmpKeyStore(t *testing.T, encrypted bool) (string, *KeyStore) {
 	d, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	newKs := NewPlaintextKeyStore
 	if encrypted {
 		newKs = func(kd string) *KeyStore { return NewKeyStore(kd, veryLightScryptN, veryLightScryptP) }

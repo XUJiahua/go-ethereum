@@ -67,10 +67,13 @@ func NewManager(config *Config, backends ...Backend) *Manager {
 	am := &Manager{
 		config:   config,
 		backends: make(map[reflect.Type][]Backend),
+		// subscriber for each Backend
 		updaters: subs,
-		updates:  updates,
-		wallets:  wallets,
-		quit:     make(chan chan error),
+		// update channel (queue)
+		updates: updates,
+		// initial list of wallets
+		wallets: wallets,
+		quit:    make(chan chan error),
 	}
 	for _, backend := range backends {
 		kind := reflect.TypeOf(backend)

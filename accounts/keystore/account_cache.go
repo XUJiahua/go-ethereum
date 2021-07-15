@@ -68,7 +68,7 @@ type accountCache struct {
 	watcher  *watcher
 	mu       sync.Mutex
 	all      accountsByURL
-	byAddr   map[common.Address][]accounts.Account
+	byAddr   map[common.Address][]accounts.Account // TODO: one address, multiple Accounts?
 	throttle *time.Timer
 	notify   chan struct{}
 	fileC    fileCache
@@ -111,6 +111,7 @@ func (ac *accountCache) add(newAccount accounts.Account) {
 	}
 	// newAccount is not in the cache.
 	ac.all = append(ac.all, accounts.Account{})
+	// codereview: prepare a slot
 	copy(ac.all[i+1:], ac.all[i:])
 	ac.all[i] = newAccount
 	ac.byAddr[newAccount.Address] = append(ac.byAddr[newAccount.Address], newAccount)
