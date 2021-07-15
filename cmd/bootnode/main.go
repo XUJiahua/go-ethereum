@@ -62,6 +62,7 @@ func main() {
 	}
 	switch {
 	case *genKey != "":
+		// codereview: generate private key
 		nodeKey, err = crypto.GenerateKey()
 		if err != nil {
 			utils.Fatalf("could not generate key: %v", err)
