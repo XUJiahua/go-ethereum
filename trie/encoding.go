@@ -16,6 +16,8 @@
 
 package trie
 
+// https://medium.com/coinmonks/data-structure-in-ethereum-episode-1-compact-hex-prefix-encoding-12558ae02791
+
 // Trie keys are dealt with in three distinct encodings:
 //
 // KEYBYTES encoding contains the actual key and nothing else. This encoding is the
@@ -35,12 +37,17 @@ package trie
 // into the remaining bytes. Compact encoding is used for nodes stored on disk.
 
 func hexToCompact(hex []byte) []byte {
+	// codereview: no nibble type, use byte instead
 	terminator := byte(0)
 	if hasTerm(hex) {
 		terminator = 1
+		// codereview: remove terminator byte
 		hex = hex[:len(hex)-1]
 	}
+	// codereview: compacted use half space
 	buf := make([]byte, len(hex)/2+1)
+	// codereview: 0b00000001 -> 0b00100000 (0x20)
+	// 0x0 -> 0x0
 	buf[0] = terminator << 5 // the flag byte
 	if len(hex)&1 == 1 {
 		buf[0] |= 1 << 4 // odd flag
