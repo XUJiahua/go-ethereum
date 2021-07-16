@@ -136,6 +136,22 @@ func TestNodeCloseClosesDB(t *testing.T) {
 	require.NotNil(t, db.Put([]byte{}, []byte{}), "Put succeeded after node is closed")
 }
 
+func TestNodeOpenLevelDB(t *testing.T) {
+	// Create a temporary folder to use as the data directory
+	dir, err := ioutil.TempDir("", "")
+	require.Nil(t, err, "failed to create temporary data directory")
+	defer os.RemoveAll(dir)
+
+	// Create a new node based on the data directory
+	stack, err := New(&Config{DataDir: dir})
+	require.Nil(t, err)
+	defer stack.Close()
+
+	db, err := stack.OpenDatabase("mydb", 0, 0, "", false)
+	require.Nil(t, err, "can't open DB")
+	require.Nil(t, db.Put([]byte("hello"), []byte("world")), "can't Put on open DB")
+}
+
 // This test checks that OpenDatabase can be used from within a Lifecycle Start method.
 func TestNodeOpenDatabaseFromLifecycleStart(t *testing.T) {
 	stack, _ := New(testNodeConfig())
