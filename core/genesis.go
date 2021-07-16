@@ -141,6 +141,8 @@ func (e *GenesisMismatchError) Error() string {
 	return fmt.Sprintf("database contains incompatible genesis (have %x, new %x)", e.Stored, e.New)
 }
 
+// codereview: db has no genesis, and genesis is nil, use main-net genesis
+
 // SetupGenesisBlock writes or updates the genesis block in db.
 // The block that will be used is:
 //
@@ -163,6 +165,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 		return params.AllEthashProtocolChanges, common.Hash{}, errGenesisNoConfig
 	}
 	// Just commit the new block if there is no stored genesis block.
+	// codereview: get block hash by block number
 	stored := rawdb.ReadCanonicalHash(db, 0)
 	if (stored == common.Hash{}) {
 		if genesis == nil {
@@ -171,6 +174,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 		} else {
 			log.Info("Writing custom genesis block")
 		}
+		// codereview: core
 		block, err := genesis.Commit(db)
 		if err != nil {
 			return genesis.Config, common.Hash{}, err
@@ -179,6 +183,7 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	}
 	// We have the genesis block in database(perhaps in ancient database)
 	// but the corresponding state is missing.
+	// codereview: get block header by block hash
 	header := rawdb.ReadHeader(db, stored, 0)
 	if _, err := state.New(header.Root, state.NewDatabaseWithConfig(db, nil), nil); err != nil {
 		if genesis == nil {
@@ -232,6 +237,8 @@ func SetupGenesisBlockWithOverride(db ethdb.Database, genesis *Genesis, override
 	if compatErr != nil && *height != 0 && compatErr.RewindTo != 0 {
 		return newcfg, stored, compatErr
 	}
+	// codereview: chainConfig is saved in a separate key, not within a block
+	// if compatiable, previous genesis block will not change
 	rawdb.WriteChainConfig(db, stored, newcfg)
 	return newcfg, stored, nil
 }
@@ -261,18 +268,21 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if db == nil {
 		db = rawdb.NewMemoryDatabase()
 	}
+	// codereview: statedb track account->state
 	statedb, err := state.New(common.Hash{}, state.NewDatabase(db), nil)
 	if err != nil {
 		panic(err)
 	}
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, account.Balance)
+		// TODO: what is Code?
 		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
 	}
+	// codereview: state root hash
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
@@ -304,6 +314,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true, nil)
 
+	// codereview: genesis block, without transactions
 	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil))
 }
 
@@ -312,6 +323,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	block := g.ToBlock(db)
 	if block.Number().Sign() != 0 {
+		// codereview: genesis block is block 0
 		return nil, fmt.Errorf("can't commit genesis block with number > 0")
 	}
 	config := g.Config
@@ -322,6 +334,7 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 		return nil, err
 	}
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
+	// codereview: block header, body
 	rawdb.WriteBlock(db, block)
 	rawdb.WriteReceipts(db, block.Hash(), block.NumberU64(), nil)
 	rawdb.WriteCanonicalHash(db, block.Hash(), block.NumberU64())

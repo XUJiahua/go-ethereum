@@ -130,6 +130,8 @@ func NewCustom(file string, namespace string, customize func(options *opt.Option
 		log:      logger,
 		quitChan: make(chan chan error),
 	}
+
+	// codereview: namespace is used as metrics prefix
 	ldb.compTimeMeter = metrics.NewRegisteredMeter(namespace+"compact/time", nil)
 	ldb.compReadMeter = metrics.NewRegisteredMeter(namespace+"compact/input", nil)
 	ldb.compWriteMeter = metrics.NewRegisteredMeter(namespace+"compact/output", nil)

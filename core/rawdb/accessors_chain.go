@@ -33,9 +33,12 @@ import (
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
 func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
+	// codereview: nofreezedb do not support AncientStore
 	data, _ := db.Ancient(freezerHashTable, number)
 	if len(data) == 0 {
+		// codereview: get block header
 		data, _ = db.Get(headerHashKey(number))
+		// codereview: wired...
 		// In the background freezer is moving data from leveldb to flatten files.
 		// So during the first check for ancient db, the data is not yet in there,
 		// but when we reach into leveldb, the data was already moved. That would
@@ -312,6 +315,7 @@ func ReadHeader(db ethdb.Reader, hash common.Hash, number uint64) *types.Header 
 		return nil
 	}
 	header := new(types.Header)
+	// codereview: bytes -> header
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		log.Error("Invalid block header RLP", "hash", hash, "err", err)
 		return nil

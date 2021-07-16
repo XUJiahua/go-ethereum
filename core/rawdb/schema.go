@@ -159,6 +159,7 @@ func headerTDKey(number uint64, hash common.Hash) []byte {
 
 // headerHashKey = headerPrefix + num (uint64 big endian) + headerHashSuffix
 func headerHashKey(number uint64) []byte {
+	// codereview: h,...,n
 	return append(append(headerPrefix, encodeBlockNumber(number)...), headerHashSuffix...)
 }
 

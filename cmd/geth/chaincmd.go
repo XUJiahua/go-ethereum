@@ -48,6 +48,7 @@ var (
 		Usage:     "Bootstrap and initialize a new genesis block",
 		ArgsUsage: "<genesisPath>",
 		Flags: []cli.Flag{
+			// codereview: init sub command only use DataDirFlag
 			utils.DataDirFlag,
 		},
 		Category: "BLOCKCHAIN COMMANDS",
@@ -197,6 +198,7 @@ func initGenesis(ctx *cli.Context) error {
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
+	// codereview: why 2 chaindata? as you don't know which sync mode you will use later?
 	for _, name := range []string{"chaindata", "lightchaindata"} {
 		chaindb, err := stack.OpenDatabase(name, 0, 0, "", false)
 		if err != nil {
